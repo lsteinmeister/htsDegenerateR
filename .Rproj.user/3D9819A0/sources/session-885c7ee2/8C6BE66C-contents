@@ -1,0 +1,27 @@
+Package: htsDegenerateR
+Type: Package
+Title: Adapts the MinT function of the hts library by (Hyndman et al. 2021) to allow the reconciliation of degenerate hierarchical time series. 
+Version: 0.1.0
+Author: Louis Steinmeister
+Maintainer: Louis Steinmeister <louis.steinmeister@udo.edu>
+Description: Takes the MinT implemenation of (Hyndman et al. 2021) and adapts it to allow degenerate hierarchical structures. Instead of the "nodes" argument, this function takes an S matrix which is more versatile in the structures it allows. The MinT algorithm is based on (Wickramasuriya et al. 2018) <doi:10.1080/01621459.2018.1448825>
+License: GPL (>= 2)
+Encoding: UTF-8
+LazyData: true
+Imports:
+    SparseM,
+    Matrix,
+    parallel,
+    utils,
+    methods,
+    graphics,
+    grDevices,
+    stats
+Suggests:
+    forecast,
+    hts,
+    testthat,
+    knitr,
+    rmarkdown,
+    covr
+RdMacros: Rdpack
