@@ -97,10 +97,13 @@ MinT <- function (fcasts, Smat, residual, covariance = c("shr", "sam"),
       return(t(allf))
       if (keep == "all") {
         out <- t(allf)
+        colnames(out) = cnames
+        out = ts(out, start = tspx[1L], frequency = tspx[3L])
       }
       else {
         bottom <- totalts - (ncol(smat):1L) + 1L
-        bf <- t(allf[bottom, ])
+        bf <- ts(t(allf[bottom, ]), start = tspx[1L], frequency = tspx[3L])
+        colnames(bf) = cnames[bottom, ]
         out <- bf
         }
       }
@@ -144,7 +147,5 @@ MinT <- function (fcasts, Smat, residual, covariance = c("shr", "sam"),
       }
     }
     }
-  colnames(out) = cnames
-  out = ts(out, start = tspx[1L], frequency = tspx[3L])
   return(out)
 }
