@@ -8,10 +8,10 @@
 #' @param nonnegative Not yet implemented. Only supports "False".
 #' @param algorithms Algorithm used to compute inverse of the matrices.
 #' @param keep Should all reconciled forecasts ("all") or only the bottom level ("bottom") be returnd.
-#' @param parallel
-#' @param num.cores
-#' @param control.nn
-#' @param cov.type
+#' @param parallel should this be run in parallel
+#' @param num.cores number of cores
+#' @param control.nn extra control arguments
+#' @param cov.type type of covariance to be calculated ("complete.obs","pairwise.complete.obs")
 #'
 #' @references Wickramasuriya, S. L., Athanasopoulos, G., Hyndman, R. J., 2019, Optimal Forecast Reconciliation for Hierarchical and Grouped Time Series Through Trace Minimization, Journal Of The American Statistical Association, 114 (526), 804–819.
 #'
@@ -19,10 +19,8 @@
 #'
 #' Hyndman, R., Lee, A., Wang, E., Wickramasuriya, S., 2021, Hts: Hierarchical and Grouped Time Series. .
 #'
-#' @return
+#' @return reconciled forecasts
 #' @export
-#'
-#' @examples
 MinT <- function (fcasts, Smat, residual, covariance = c("shr", "sam"),
                   nonnegative = FALSE, algorithms = c("chol", "lu", "cg"),
                   keep = c("all", "bottom"),  parallel = FALSE, num.cores = 2,
@@ -40,8 +38,6 @@ MinT <- function (fcasts, Smat, residual, covariance = c("shr", "sam"),
   fcasts <- stats::as.ts(fcasts)
   tspx <- stats::tsp(fcasts)
   cnames <- colnames(fcasts)
-  # store fcast names
-  ts.names = if(!is.null(colnames(fcasts))) colnames(fcasts) else NULL
 
 
   if (!nonnegative) {
@@ -148,6 +144,7 @@ MinT <- function (fcasts, Smat, residual, covariance = c("shr", "sam"),
       }
     }
     }
-  colnames(out) = ts.names
+  colnames(out) = cnames
+  out = ts(out, start = tspx[1L], frequency = tspx[3L])
   return(out)
 }
