@@ -205,9 +205,10 @@ shrink.estim <- function(x, tar, cov.type = "pairwise.complete.obs")
   return(list(shrink.cov, c("The shrinkage intensity lambda is:",
                             round(lambda, digits = 4))))
 }
-lowerD <- function(x)
+lowerD <- function(x, cov.type)
 {
   n <- nrow(x)
+
   return(diag(apply(x, 2, function(z){
     crossprod(na.omit(z))/sum(!is.na(z))} )))
 }

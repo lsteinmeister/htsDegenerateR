@@ -24,9 +24,9 @@
 #'
 #' @examples
 MinT <- function (fcasts, Smat, residual, covariance = c("shr", "sam"),
-                  nonnegative = FALSE, algorithms = c("lu", "cg", "chol"),
+                  nonnegative = FALSE, algorithms = c("chol", "lu", "cg"),
                   keep = c("all", "bottom"),  parallel = FALSE, num.cores = 2,
-                  control.nn = list(), cov.type = "pairwise")
+                  control.nn = list(), cov.type = c("complete.obs","pairwise.complete.obs"))
 {
   if (is.null(Smat)) {
     stop("Please specify the hierarchical or the grouping structure by providing an Smat.", call. = FALSE)
@@ -35,10 +35,14 @@ MinT <- function (fcasts, Smat, residual, covariance = c("shr", "sam"),
   alg <- match.arg(algorithms)
   keep <- match.arg(keep)
   covar <- match.arg(covariance)
+  cov.type <- match.arg(cov.type)
   res <- residual
   fcasts <- stats::as.ts(fcasts)
   tspx <- stats::tsp(fcasts)
   cnames <- colnames(fcasts)
+  # store fcast names
+  ts.names = if(!is.null(colnames(fcasts))) colnames(fcasts) else NULL
+
 
   if (!nonnegative) {
     if (missing(residual))
@@ -54,7 +58,7 @@ MinT <- function (fcasts, Smat, residual, covariance = c("shr", "sam"),
         stop("MinT needs covariance matrix to be positive definite.", call. = FALSE)
       }
     } else { # shrinkage
-      tar <- lowerD(res)
+      tar <- lowerD(res, cov.type)
       shrink <- shrink.estim(res, tar, cov.type = cov.type)
       w.1 <- shrink[[1]]
       lambda <- shrink[[2]]
@@ -104,9 +108,7 @@ MinT <- function (fcasts, Smat, residual, covariance = c("shr", "sam"),
         out <- bf
         }
       }
-    }
-
-  } else {
+    } else {
     stop("Nonnegative forecast reconciliation is not yet implemetned.")
     if (any(fcasts < 0)) {
       fcasts[fcasts < 0] <- 0
@@ -134,7 +136,7 @@ MinT <- function (fcasts, Smat, residual, covariance = c("shr", "sam"),
           out <- aggts(out)
         }
       }
-    } else {
+    }else {
       if (keep == "bottom") {
         out <- bf
       } else {
@@ -145,6 +147,7 @@ MinT <- function (fcasts, Smat, residual, covariance = c("shr", "sam"),
         }
       }
     }
-  }
+    }
+  colnames(out) = ts.names
   return(out)
 }
