@@ -118,6 +118,7 @@ CHOL <- function(fcasts, S, weights, allow.changes = FALSE) {
   nbts <- ncol(S)
   nagg <- nts - nbts
   seqagg <- 1L:nagg
+  h = if(is.matrix(fcasts)) nrow(fcasts) else 1
   if (!allow.changes) {
     utmat <- cbind(methods::as(nagg, "matrix.diag.csr"), -1 * S[1L:nagg, ])
   } else {
@@ -145,7 +146,9 @@ CHOL <- function(fcasts, S, weights, allow.changes = FALSE) {
     lhs.l <- utmat %*% weights %*% t(utmat)
     lhs.l <- (t(lhs.l) + lhs.l)/2
     lin.sol <- backsolve(chol(lhs.l), rhs.l) # same as solve as long as default twice = T
-    p1 <- jmat %*% fcasts - (jmat %*% weights %*% t(utmat) %*% lin.sol)
+    #p1 <- jmat %*% fcasts - kronecker(jmat %*% weights %*% t(utmat) , t(lin.sol))#jmat %*% fcasts - (jmat %*% weights %*% t(utmat) %*% lin.sol)
+    p1 <-if(nagg == 1 & h > 1) jmat %*% fcasts - (jmat %*% weights %*% kronecker(t(utmat), t(lin.sol))) else
+      jmat %*% fcasts - (jmat %*% weights %*% t(utmat) %*% lin.sol)
   }
   if (!allow.changes) {
     comb <- as.matrix(S %*% p1)
@@ -155,25 +158,6 @@ CHOL <- function(fcasts, S, weights, allow.changes = FALSE) {
   }
   return(comb)
 }
-#
-#' Bottom-up reconciliation
-BU <- function(fcasts, S, weights, allow.changes = FALSE) {
-  #fcasts <- t(stats::na.omit(t(fcasts)))
-
-  bo_lvl_names = colnames(S)
-
-  up_lvl = which(!rownames(S) %in% bo_lvl_names)
-
-  G= t(S)
-
-  G[,up_lvl] <- 0
-
-  t(S %*% G %*% t(fcasts))
-}
-
-
-
-
 
 
 
