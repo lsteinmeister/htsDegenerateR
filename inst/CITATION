@@ -1,0 +1,8 @@
+bibentry(
+  bibtype  = "Article",
+  title    = "Degenerate Hierarchical Time Series Reconciliation With The Minimum Trace Algorithm in R",
+  author   = "Steinmeister, Louis and Pauly, Markus",
+  journal  = "Proceedings of the Conference on Production Systems and Logistics: CPSL",
+  year     = "2024",
+  doi      = "https://doi.org/10.15488/17729"
+)

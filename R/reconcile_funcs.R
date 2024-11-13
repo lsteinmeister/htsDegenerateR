@@ -13,10 +13,6 @@
 # All these functions return a reverse reconciled matrix with all ts.
 
 #LU decomposition is fast but sometimes instable. Use QR decomposition if LU decomposition fails
-#' Title
-#'
-#' @param lhs.l
-#' @param rhs.l
 solveLUQR <- function(lhs.l, rhs.l) {
   tryCatch(solve(lhs.l, rhs.l), error=function(cond){
 
@@ -28,11 +24,6 @@ solveLUQR <- function(lhs.l, rhs.l) {
 }
 
 # LU factorization (Matrix pkg)
-#' Title
-#'
-#' @param fcasts
-#' @param S
-#' @param weights
 LU <- function(fcasts, S, weights, allow.changes = FALSE) {
   nts <- nrow(S)
   nbts <- ncol(S)
@@ -79,12 +70,6 @@ LU <- function(fcasts, S, weights, allow.changes = FALSE) {
 }
 
 # Conjugate Gradient (Matrix and RcppEigen pkgs)
-#' Title
-#'
-#' @param fcasts
-#' @param S
-#' @param weights
-#' @param allow.changes
 CG <- function(fcasts, S, weights, allow.changes = FALSE) {
   nts <- nrow(S)
   nbts <- ncol(S)
@@ -127,12 +112,6 @@ CG <- function(fcasts, S, weights, allow.changes = FALSE) {
   return(comb)
 }
 # Cholesky factorization
-#' Title
-#'
-#' @param fcasts
-#' @param S
-#' @param weights
-#' @param allow.changes
 CHOL <- function(fcasts, S, weights, allow.changes = FALSE) {
   fcasts <- t(stats::na.omit(t(fcasts)))
   nts <- nrow(S)
@@ -178,14 +157,6 @@ CHOL <- function(fcasts, S, weights, allow.changes = FALSE) {
 }
 #
 #' Bottom-up reconciliation
-#'
-#' @param fcasts
-#' @param S
-#' @param weights
-#' @param allow.changes
-#'
-#' @return
-#' @export
 BU <- function(fcasts, S, weights, allow.changes = FALSE) {
   #fcasts <- t(stats::na.omit(t(fcasts)))
 
@@ -206,10 +177,6 @@ BU <- function(fcasts, S, weights, allow.changes = FALSE) {
 
 
 
-#' Title
-#'
-#' @param x
-#' @param tol
 is.posdef <- function (x, tol = 1e-08) {
   n <- NROW(x)
   if(n != NCOL(x))
@@ -223,22 +190,23 @@ is.posdef <- function (x, tol = 1e-08) {
 
 # Shrunk covariance matrix - Schafer and strimmer approach
 # adapted to work with NA entries (different TS lengths)
-#' Title
-#'
-#' @param x
-#' @param tar
-#' @param cov.type
-shrink.estim <- function(x, tar, cov.type = "pairwise.complete.obs")
+shrink.estim <- function(x, tar, cov.type = "complete.obs", substract.mean = F)
 {
   if (is.matrix(x) == TRUE && is.numeric(x) == FALSE)
     stop("The data matrix must be numeric!", call. = FALSE)
   p <- ncol(x)
   n <- nrow(x)
-  covm <- cov(x, use = cov.type)#crossprod(x) / n
+  if(cov.type =="complete.obs" & !substract.mean) x = na.omit(x)
+  covm <-if(substract.mean)
+    cov(x, use = cov.type)
+  else crossprod(x) / n
+
   corm <- cov2cor(covm)
   xs <- scale(x, center = FALSE, scale = sqrt(diag(covm)))
-  v <- (1/(n)) * (cov(xs^2, use = cov.type) - 1/n * (cov(xs, use = cov.type))^2)
-  #v <- (1/(n * (n - 1))) * (crossprod(xs^2) - 1/n * (crossprod(xs))^2)
+  v <- if(substract.mean) (1/(n)) * (cov(xs^2, use = cov.type) -
+                                       1/n * (cov(xs, use = cov.type))^2) else
+                                         (1/(n * (n - 1))) * (crossprod(xs^2) - 1/n * (crossprod(xs))^2)
+
   diag(v) <- 0
   corapn <- cov2cor(tar)
   d <- (corm - corapn)^2
@@ -248,10 +216,8 @@ shrink.estim <- function(x, tar, cov.type = "pairwise.complete.obs")
   return(list(shrink.cov, c("The shrinkage intensity lambda is:",
                             round(lambda, digits = 4))))
 }
-#' Title
-#'
-#' @param x
-#' @param cov.type
+
+
 lowerD <- function(x, cov.type)
 {
   n <- nrow(x)
@@ -261,13 +227,11 @@ lowerD <- function(x, cov.type)
 }
 #' accuracy.gts
 #'
-#' @param fcasts
-#' @param actuals
+#' @param fcasts forecasts to be evaluated
+#' @param actuals actuals to compare the forecasts against
 #'
 #' @return Averaged error measures across all time series in matrix form.
 #' @export
-#'
-#' @examples
 accuracy.gts <- function(fcasts, actuals) {
 
   x <- actuals

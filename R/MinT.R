@@ -1,17 +1,14 @@
 
 #' Using the method of Wickramasuriya et al. (2019), this function (based on Hyndman et al.'s hts library) combines the forecasts at all levels of a hierarchical time series and works for degenerate hierarchies.
 #'
-#' @param fcasts Matrix of forecasts for all levels of a hierarchical or grouped time series. Each row represents one forecast horizon and each column represents one time series of aggregated or disaggregated forecasts.
-#' @param Smat Summation matrix specifying the hierarchichal structure of the time series (see Hyndman et al. (2018)).
-#' @param residual Time series or list of in-sample residuals.
-#' @param covariance Type of the covariance matrix to be used. Shrinking towards a diagonal unequal variances ("shr") or sample covariance matrix ("sam").
-#' @param nonnegative Not yet implemented. Only supports "False".
-#' @param algorithms Algorithm used to compute inverse of the matrices.
-#' @param keep Should all reconciled forecasts ("all") or only the bottom level ("bottom") be returnd.
-#' @param parallel should this be run in parallel
-#' @param num.cores number of cores
-#' @param control.nn extra control arguments
-#' @param cov.type type of covariance to be calculated ("complete.obs","pairwise.complete.obs")
+#' @param fcasts a vector or a matrix (rows = horizon, columns = ts columns) of forecasts
+#' @param Smat a structure matrix detailing the hierarchical structure of the hts. Make sure that the order of the rows align with the order of the forecasts.
+#' @param residual a matrix of in-sample residuals (columns = ts columns)
+#' @param covariance should a shrinkage estimator or the sample estimator be used? alternatively, a custom covariance matrix can be passed (additionally requires the cov.matrix argument)
+#' @param nonnegative not implemented yet.
+#' @param algorithms specifies the algorithm for solving the matrix inversion during reconciliation. "chol" uses the Cholesky decomposition. "lu" and "sg" are exactly as in the hts library and have not been additionally tested here. Therefore, "chol" is recommended.
+#' @param cov.type specify how the covariance matrix should be computed (default = complete observations). Note that pairwise.complete.obs may not yield a positive definite matrix!
+#' @param cov.matrix specify in case a custom covariance matrix should be used
 #'
 #' @references Wickramasuriya, S. L., Athanasopoulos, G., Hyndman, R. J., 2019, Optimal Forecast Reconciliation for Hierarchical and Grouped Time Series Through Trace Minimization, Journal Of The American Statistical Association, 114 (526), 804–819.
 #'
@@ -21,131 +18,80 @@
 #'
 #' @return reconciled forecasts
 #' @export
-MinT <- function (fcasts, Smat, residual, covariance = c("shr", "sam"),
+MinT <- function (fcasts, Smat, residual, covariance = c("shr", "sam", "custom"),
                   nonnegative = FALSE, algorithms = c("chol", "lu", "cg"),
-                  keep = c("all", "bottom"),  parallel = FALSE, num.cores = 2,
-                  control.nn = list(), cov.type = c("complete.obs","pairwise.complete.obs"))
+                  cov.type = "complete.obs", cov.matrix = NULL)
 {
+  if(nonnegative) warning("non-negative forecast reconciliation is not yet implemented here.
+                          See the hts library for non-degenerate cases instead.")
   if (is.null(Smat)) {
     stop("Please specify the hierarchical or the grouping structure by providing an Smat.", call. = FALSE)
   }
 
   alg <- match.arg(algorithms)
-  keep <- match.arg(keep)
   covar <- match.arg(covariance)
-  cov.type <- match.arg(cov.type)
+  if(covar == "custom" & is.null(cov.matrix)) stop("cov.matrix has to be defined when covar is 'custom'.")
   res <- residual
-  fcasts <- stats::as.ts(fcasts)
+  #fcasts <- stats::as.ts(fcasts)
   tspx <- stats::tsp(fcasts)
-  cnames <- colnames(fcasts)
+  cnames <- if(is.matrix(fcasts)) colnames(fcasts) else names(fcasts)
 
-
-  if (!nonnegative) {
-    if (missing(residual))
+  if (missing(residual))
+  {
+    stop("MinT needs insample residuals.", call. = FALSE)
+  }
+  if (covar=="sam")
+  {
+    n <- nrow(res)
+    w.1 <- crossprod(res) / n
+    if(is.posdef(w.1)==FALSE)
     {
-      stop("MinT needs insample residuals.", call. = FALSE)
+      stop("MinT needs covariance matrix to be positive definite.", call. = FALSE)
     }
-    if (covar=="sam")
+  } else if(covar=="shr"){ # shrinkage
+    tar <- lowerD(res)
+    shrink <- shrink.estim(res, tar, cov.type = cov.type)
+    w.1 <- shrink[[1]]
+    lambda <- shrink[[2]]
+    if (is.posdef(w.1)==FALSE)
     {
-      n <- nrow(res)
-      w.1 <- crossprod(res) / n
-      if(is.posdef(w.1)==FALSE)
-      {
-        stop("MinT needs covariance matrix to be positive definite.", call. = FALSE)
-      }
-    } else { # shrinkage
-      tar <- lowerD(res, cov.type)
-      shrink <- shrink.estim(res, tar, cov.type = cov.type)
-      w.1 <- shrink[[1]]
-      lambda <- shrink[[2]]
-      if (is.posdef(w.1)==FALSE)
-      {
-        stop("MinT needs covariance matrix to be positive definite.", call. = FALSE)
-      }
+      stop("MinT needs covariance matrix to be positive definite.", call. = FALSE)
     }
+  } else{ # custom
+    w.1 = cov.matrix
+  }
 
-    if (TRUE) { # hts class is.null(groups)
-      totalts <- nrow(Smat)
-      if (!is.matrix(fcasts)) {
-        fcasts <- t(fcasts)
-      }
-      h <- nrow(fcasts)
-      if (ncol(fcasts) != totalts) {
-        stop("Argument fcasts requires all the forecasts.", call. = FALSE)
-      }
-      #gmat <- GmatrixH(nodes)
-      fcasts <- t(fcasts)
-      if (alg == "chol") {
-        smat <- as.matrix.csr(Smat)
-        if (!is.null(w.1)) {
-          w.1 <- as.matrix.csr(w.1)
-        }
-        allf <- CHOL(fcasts = fcasts, S = smat, weights = w.1, allow.changes = FALSE)
-      }
-      else {
-        smat <- as.matrix.csr(Smat)#rixM(gmat)
-        if (!is.null(w.1)) {
-          weights <-  methods::as(w.1, "sparseMatrix")
-        }
-        if (alg == "lu") {
-          allf <- LU(fcasts = fcasts, S = smat, weights = weights, allow.changes = FALSE)
-        }
-        else if (alg == "cg") {
-          allf <- CG(fcasts = fcasts, S = smat, weights = weights, allow.changes = FALSE)
-        }
-      }
-      return(t(allf))
-      if (keep == "all") {
-        out <- t(allf)
-        colnames(out) = cnames
-        out = ts(out, start = tspx[1L], frequency = tspx[3L])
-      }
-      else {
-        bottom <- totalts - (ncol(smat):1L) + 1L
-        bf <- ts(t(allf[bottom, ]), start = tspx[1L], frequency = tspx[3L])
-        colnames(bf) = cnames[bottom, ]
-        out <- bf
-        }
-      }
-    } else {
-    stop("Nonnegative forecast reconciliation is not yet implemetned.")
-    if (any(fcasts < 0)) {
-      fcasts[fcasts < 0] <- 0
-      warning("Negative base forecasts are truncated to zero.")
+  totalts <- nrow(Smat)
+  if (!is.matrix(fcasts)) {
+    fcasts <- t(fcasts)
+  }
+  h <- nrow(fcasts)
+  if (ncol(fcasts) != totalts) {
+    stop("Argument fcasts requires all the forecasts.", call. = FALSE)
+  }
+  #gmat <- GmatrixH(nodes)
+  fcasts <- t(fcasts)
+  if (alg == "chol") {
+    smat <- as.matrix.csr(Smat)
+    if (!is.null(w.1)) {
+      w.1 <- as.matrix.csr(w.1)
     }
-
-    lst.fc <- split(fcasts, row(fcasts))
-    if (parallel) {
-      if (is.null(num.cores)) {
-        num.cores <- detectCores()
-      }
-      cl <- makeCluster(num.cores)
-      bf <- parSapplyLB(cl = cl, X = lst.fc, MinTbpv, nodes = nodes, groups = groups, res = res, covar = covar, alg = alg, control.nn = control.nn, simplify = TRUE)
-      stopCluster(cl = cl)
-    } else {
-      bf <- sapply(lst.fc, MinTbpv, nodes = nodes, groups = groups, res = res, covar = covar, alg = alg, control.nn = control.nn)
+    allf <- CHOL(fcasts = fcasts, S = smat, weights = w.1, allow.changes = FALSE)
+  }
+  else {
+    smat <- as.matrix.csr(Smat)#rixM(gmat)
+    if (!is.null(w.1)) {
+      weights <-  methods::as(w.1, "sparseMatrix")
     }
-    bf <- ts(t(bf), start = tspx[1L], frequency = tspx[3L])
-    if (is.null(groups)) {
-      if (keep == "bottom") {
-        out <- bf
-      } else {
-        out <- suppressMessages(hts(bf, nodes = nodes))
-        if (keep == "all") {
-          out <- aggts(out)
-        }
-      }
-    }else {
-      if (keep == "bottom") {
-        out <- bf
-      } else {
-        colnames(bf) <- tail(cnames, ncol(bf))
-        out <- suppressMessages(gts(bf, groups = groups))
-        if (keep == "all") {
-          out <- aggts(out)
-        }
-      }
+    if (alg == "lu") {
+      allf <- LU(fcasts = fcasts, S = smat, weights = weights, allow.changes = FALSE)
     }
+    else if (alg == "cg") {
+      allf <- CG(fcasts = fcasts, S = smat, weights = weights, allow.changes = FALSE)
     }
+  }
+  out = t(allf)
+  colnames(out) = cnames
   return(out)
 }
+
