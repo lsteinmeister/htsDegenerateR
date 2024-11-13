@@ -1,7 +1,8 @@
 # htsDegenerateR
 
-htsDegenerateR adapts the original hts library implementation of the
-trace minimization algorithm originally proposed by [Wickramasuriya et
+htsDegenerateR adapts the original [hts
+library](https://github.com/earowang/hts/) implementation of the trace
+minimization algorithm originally proposed by [Wickramasuriya et
 al.](https://doi.org/10.1080/01621459.2018.1448825).
 
 This library can be installed using:
