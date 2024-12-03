@@ -8,38 +8,26 @@ MinT(
   fcasts,
   Smat,
   residual,
-  covariance = c("shr", "sam"),
+  covariance = c("shr", "sam", "custom"),
   nonnegative = FALSE,
-  algorithms = c("chol", "lu", "cg"),
-  keep = c("all", "bottom"),
-  parallel = FALSE,
-  num.cores = 2,
-  control.nn = list(),
-  cov.type = c("complete.obs", "pairwise.complete.obs")
+  cov.type = "complete.obs",
+  cov.matrix = NULL
 )
 }
 \arguments{
-\item{fcasts}{Matrix of forecasts for all levels of a hierarchical or grouped time series. Each row represents one forecast horizon and each column represents one time series of aggregated or disaggregated forecasts.}
+\item{fcasts}{a vector or a matrix (rows = horizon, columns = ts columns) of forecasts}
 
-\item{Smat}{Summation matrix specifying the hierarchichal structure of the time series (see Hyndman et al. (2018)).}
+\item{Smat}{a structure matrix detailing the hierarchical structure of the hts. Make sure that the order of the rows align with the order of the forecasts.}
 
-\item{residual}{Time series or list of in-sample residuals.}
+\item{residual}{a matrix of in-sample residuals (columns = ts columns)}
 
-\item{covariance}{Type of the covariance matrix to be used. Shrinking towards a diagonal unequal variances ("shr") or sample covariance matrix ("sam").}
+\item{covariance}{should a shrinkage estimator or the sample estimator be used? alternatively, a custom covariance matrix can be passed (additionally requires the cov.matrix argument)}
 
-\item{nonnegative}{Not yet implemented. Only supports "False".}
+\item{nonnegative}{not implemented yet.}
 
-\item{algorithms}{Algorithm used to compute inverse of the matrices.}
+\item{cov.type}{specify how the covariance matrix should be computed (default = complete observations). Note that pairwise.complete.obs may not yield a positive definite matrix!}
 
-\item{keep}{Should all reconciled forecasts ("all") or only the bottom level ("bottom") be returnd.}
-
-\item{parallel}{should this be run in parallel}
-
-\item{num.cores}{number of cores}
-
-\item{control.nn}{extra control arguments}
-
-\item{cov.type}{type of covariance to be calculated ("complete.obs","pairwise.complete.obs")}
+\item{cov.matrix}{specify in case a custom covariance matrix should be used}
 }
 \value{
 reconciled forecasts
@@ -47,10 +35,45 @@ reconciled forecasts
 \description{
 Using the method of Wickramasuriya et al. (2019), this function (based on Hyndman et al.'s hts library) combines the forecasts at all levels of a hierarchical time series and works for degenerate hierarchies.
 }
+\examples{
+# Set the seed for reproducibility
+set.seed(123)
+
+# Create a sequence of 120 numbers
+x <- seq(1, 120)
+
+# Generate the columns
+AA <- sin(x*pi/6) + rnorm(120, 0, 1) # Sine component with random noise
+AB <- 0.05*x + rnorm(120, 0, 0.5) # Linear component
+B <- cos(x*pi/6)+ rnorm(120, 0, 1) # Cosine component
+
+# Combine the columns into a matrix
+matrix <- cbind(AA, AB, B)
+hts = ts(matrix, frequency = 12)
+
+# Define S matrix
+S <- rbind(c(1,1,1), c(1,1,0), diag(1,3))
+rownames(S) <-c("Total", "A", "AA", "AB", "B")
+colnames(S) <- c("AA", "AB", "B")
+
+# Aggregate hts on all levels
+hts.complete <- ts(t(S \%*\% t(hts)), frequency = 12)
+
+# Fit a model to the time series
+hts.models = lapply(hts.complete, function(c.ts) forecast::ets(c.ts))
+
+# Fit a model to the time series
+hts.models = lapply(hts.complete, function(c.ts) forecast::ets(c.ts))
+# Generate predictions based on this model
+hts.forecasts = sapply(hts.models, function(mdl) forecast::forecast(mdl, h = 1)$mean)
+# Extract residuals
+hts.residuals = sapply(hts.models, function(mdl) mdl$residuals)
+
+# Compute reconciled forecasts
+MinT(fcasts = hts.forecasts, Smat = S, residual = hts.residuals)
+}
 \references{
-Wickramasuriya, S. L., Athanasopoulos, G., Hyndman, R. J., 2019, Optimal Forecast Reconciliation for Hierarchical and Grouped Time Series Through Trace Minimization, Journal Of The American Statistical Association, 114 (526), 804–819.
-
-Hyndman, R. J., Athanasopoulos, G., 2018, Forecasting: principles and practice. OTexts.
-
-Hyndman, R., Lee, A., Wang, E., Wickramasuriya, S., 2021, Hts: Hierarchical and Grouped Time Series. .
+[hts: Hierarchical and Grouped Time Series]<https://cran.r-project.org/package=hts>
+ [Optimal Forecast Reconciliation for Hierarchical and Grouped Time Series Through Trace Minimization]<doi:10.1080/01621459.2018.1448825>
+ [Degenerate Hierarchical Time Series Reconciliation With The Minimum Trace Algorithm in R]<doi:10.15488/17729>
 }

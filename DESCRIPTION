@@ -1,28 +1,23 @@
 Package: htsDegenerateR
 Type: Package
-Title: Adapts the MinT function of the hts library by (Hyndman et al. 2021) to allow the reconciliation of degenerate hierarchical time series. 
+Title: Degenerate Hierarchical Time Series Reconciliation
 Version: 0.1.0
-Author: Louis Steinmeister
-Maintainer: Louis Steinmeister <louis.steinmeister@udo.edu>
-Description: Takes the MinT implemenation of (Hyndman et al. 2021) and adapts it to allow degenerate hierarchical structures. Instead of the "nodes" argument, this function takes an S matrix which is more versatile in the structures it allows. The MinT algorithm is based on (Wickramasuriya et al. 2018) <doi:10.1080/01621459.2018.1448825>
+Authors@R: c(person(given = "Louis",
+                    family = "Steinmeister",
+                    role = c("aut", "cre"),
+                    email = "louis.steinmeister@udo.edu"),
+                    person(given = "Markus",
+                    family = "Pauly",
+                    role = c("aut"),
+                    email = "pauly@statistik.tu-dortmund.de"))
+Description: Takes the MinT implementation of [hts: Hierarchical and Grouped Time Series]<https://cran.r-project.org/package=hts> and adapts it to allow degenerate hierarchical structures. Instead of the "nodes" argument, this function takes an S matrix which is more versatile in the structures it allows. For a demo, see [Degenerate Hierarchical Time Series Reconciliation With The Minimum Trace Algorithm in R]<doi:10.15488/17729>. The MinT algorithm is based on [Optimal Forecast Reconciliation for Hierarchical and Grouped Time Series Through Trace Minimization]<doi:10.1080/01621459.2018.1448825>.
 License: GPL (>= 2)
 Encoding: UTF-8
-LazyData: true
-Imports:
-    SparseM,
-    Matrix,
-    parallel,
-    utils,
-    methods,
-    graphics,
-    grDevices,
-    stats
-Suggests:
-    forecast,
-    hts,
-    testthat,
-    knitr,
-    rmarkdown,
-    covr
-RdMacros: Rdpack
-RoxygenNote: 7.2.3
+Imports: SparseM, methods, stats
+Suggests: forecast, testthat, knitr, rmarkdown, covr
+RoxygenNote: 7.3.1
+NeedsCompilation: no
+Packaged: 2024-12-03 15:47:22 UTC; Louis
+Author: Louis Steinmeister [aut, cre],
+  Markus Pauly [aut]
+Maintainer: Louis Steinmeister <louis.steinmeister@udo.edu>
